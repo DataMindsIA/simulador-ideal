@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ideal Alimentos • Simulador de Venda</title>
+  <title>Alimentos Ideal • Simulador de Venda</title>
 
   <style>
     :root{
@@ -51,18 +51,30 @@
       gap: 14px; padding: 8px 4px;
     }
     .brand{ display:flex; align-items:center; gap: 12px; min-width:0; }
+
+    /* Logo SEM quadrado (só a imagem) */
     .logo{
-      width: 46px; height: 46px; border-radius: 14px;
-      border: 1px solid var(--line);
-      background: linear-gradient(145deg, rgba(31,94,168,.16), rgba(217,56,58,.10));
-      box-shadow: var(--shadow2);
-      display:flex; align-items:center; justify-content:center;
-      overflow:hidden; flex: 0 0 auto;
+      width:auto;
+      height:auto;
+      border:none;
+      background:transparent;
+      box-shadow:none;
+      border-radius:0;
+      overflow:visible;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex: 0 0 auto;
     }
     .logo img{
-      width:100%; height:100%; object-fit:contain; display:block;
-      padding: 6px; background: var(--cardSolid);
+      width: 74px;         /* ajuste aqui se quiser maior/menor */
+      height: 74px;        /* ajuste aqui se quiser maior/menor */
+      object-fit: contain;
+      display:block;
+      padding:0;
+      background:transparent;
     }
+
     .brandText{ min-width:0; }
     .brandText h1{ margin:0; font-size: 16px; font-weight: 780; letter-spacing: .2px; line-height: 1.15; }
     .brandText p{ margin: 3px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.25; }
@@ -216,14 +228,22 @@
   <div class="app">
     <div class="header">
       <div class="brand">
-        <div class="logo" title="Ideal Alimentos">
-          <img src="logo.png" alt="Ideal Alimentos" onerror="this.remove();" />
+        <div class="logo" title="Alimentos Ideal">
+          <img
+            src="https://images.builderservices.io/s/cdn/v1.0/i/m?url=https%3A%2F%2Fstorage.googleapis.com%2Fproduction-hostgator-brasil-v1-0-2%2F812%2F1893812%2F9VwqSXgc%2F509b5ab48cc74b6980b35fed3efff6f7&methods=resize%2C500%2C5000"
+            alt="Alimentos Ideal"
+            decoding="async"
+            referrerpolicy="no-referrer"
+            onerror="this.remove();"
+          />
         </div>
+
         <div class="brandText">
           <h1>Simulador de Venda</h1>
-          <p>Ideal Alimentos.</p>
+          <p>Alimentos Ideal.</p>
         </div>
       </div>
+
       <div class="pill" id="pillRend">Rendimentos: —</div>
     </div>
 
@@ -286,7 +306,7 @@
               <span class="marginIcon" id="margemPercIcon"></span>
             </div>
           </div>
-
+        </div>
 
         <div class="hint">
           Comissão/Imposto: pode digitar “1” (1%) ou “0,01” (1%).<br/>
@@ -296,25 +316,25 @@
     </section>
 
     <div class="footer">
-      <span>Ideal Alimentos • Simulador interno</span>
+      <span>Alimentos Ideal • Simulador interno</span>
       <a href="https://idealalimentos.com.br/" target="_blank" rel="noreferrer">idealalimentos.com.br</a>
     </div>
   </div>
 
   <script>
-    // ========== CONSTANTES ==========
+    // ========= CONSTANTES =========
     const ARROBA_KG = 15;
     const RENDIMENTOS = {
       vaca: { dt: 0.385, tr: 0.50, pa: 0.115 },
       boi:  { dt: 0.40,  tr: 0.49, pa: 0.11  }
     };
 
-    // ========== FORMATADORES ==========
+    // ========= FORMATADORES =========
+    // Intl.NumberFormat para formatação numérica pt-BR com controle de casas decimais.
     const NF_2   = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const NF_0_2 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    const NF_3   = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
-    // ========== UTILITÁRIOS ==========
+    // ========= UTIL =========
     const $ = (id) => document.getElementById(id);
 
     function parsePtNumber(value) {
@@ -331,7 +351,7 @@
 
     function formatNumber(num, decimals) {
       if (!isFinite(num)) return '';
-      const formatter = decimals === 2 ? NF_2 : decimals === 3 ? NF_3 : NF_0_2;
+      const formatter = (decimals === 2) ? NF_2 : NF_0_2;
       return formatter.format(num);
     }
 
@@ -340,27 +360,29 @@
       return formatNumber(num * 100, decimals) + '%';
     }
 
-    // ========== CÁLCULOS ==========
+    // ========= CÁLCULO =========
     function calcular(state) {
       const r = RENDIMENTOS[state.tipo];
 
-      // Casada por kg
-      const casada = (state.tr * r.tr) + (state.dt * r.dt) + (state.pa * r.pa);
+      const casada =
+        (state.tr * r.tr) +
+        (state.dt * r.dt) +
+        (state.pa * r.pa);
 
-      // Deduções
       const comissaoValor = casada * state.comissaoPerc;
       const impostoValor  = casada * state.impostoPerc;
+
       const liquida = casada - (state.frete + comissaoValor + impostoValor);
 
-      // Em arroba
-      const casadaArroba = casada * ARROBA_KG;
+      const casadaArroba  = casada  * ARROBA_KG;
       const liquidaArroba = liquida * ARROBA_KG;
 
-      // Margens em kg (nova medida)
       const precoCompraKg = isFinite(state.precoCompraArroba) ? (state.precoCompraArroba / ARROBA_KG) : NaN;
       const margemReaisKg = isFinite(precoCompraKg) ? (liquida - precoCompraKg) : NaN;
-      const margemPerc = isFinite(precoCompraKg) && precoCompraKg !== 0 ? (margemReaisKg / precoCompraKg) : NaN;
-      const margemPercKg = isFinite(margemPerc) ? (margemPerc / ARROBA_KG) : NaN;
+
+      const margemPerc = (isFinite(precoCompraKg) && precoCompraKg !== 0)
+        ? (margemReaisKg / precoCompraKg)
+        : NaN;
 
       return {
         casada,
@@ -369,12 +391,10 @@
         liquidaArroba,
         rend: r,
         margemReaisKg,
-        margemPerc,
-        margemPercKg
+        margemPerc
       };
     }
 
-    // ========== ESTADO ==========
     function readState() {
       return {
         tipo: $('tipo').value,
@@ -388,74 +408,57 @@
       };
     }
 
-    // ========== RENDER ==========
-    function render(result) {
-      // Campos principais (2 casas decimais)
-      $('casada').value = formatNumber(result.casada, 2);
-      $('casadaArroba').value = formatNumber(result.casadaArroba, 2);
-      $('liquida').value = formatNumber(result.liquida, 2);
-      $('liquidaArroba').value = formatNumber(result.liquidaArroba, 2);
-
-      // Pill rendimentos
-      $('pillRend').textContent = 
-        `Rendimentos: DT ${formatPercent(result.rend.dt, 1)} • TR ${formatPercent(result.rend.tr, 1)} • PA ${formatPercent(result.rend.pa, 1)}`;
-
-      // Margem R$/kg
-      updateMarginField('margemReais', 'margemReaisWrap', 'margemReaisIcon', result.margemReaisKg, 2);
-
-      // Margem %
-      updateMarginField('margemPerc', 'margemPercWrap', 'margemPercIcon', result.margemPerc, 2, true);
-
-      // Margem %/kg (nova)
-      updateMarginField('margemPercKg', 'margemPercKgWrap', 'margemPercKgIcon', result.margemPercKg, 3, true);
-    }
-
+    // ========= UI =========
     function updateMarginField(valueId, wrapId, iconId, value, decimals, isPercent = false) {
       const wrap = $(wrapId);
       const val  = $(valueId);
       const icon = $(iconId);
+      if (!wrap || !val || !icon) return;
 
       wrap.className = 'marginWrap';
       icon.textContent = '';
 
       if (isFinite(value)) {
         val.textContent = isPercent ? formatPercent(value, decimals) : formatNumber(value, decimals);
-        if (value > 0) {
-          wrap.classList.add('pos');
-          icon.textContent = '↑';
-        } else if (value < 0) {
-          wrap.classList.add('neg');
-          icon.textContent = '↓';
-        }
+        if (value > 0) { wrap.classList.add('pos'); icon.textContent = '↑'; }
+        else if (value < 0) { wrap.classList.add('neg'); icon.textContent = '↓'; }
       } else {
         val.textContent = '—';
       }
     }
 
-    // ========== UPDATE ==========
+    function render(result) {
+      $('casada').value = formatNumber(result.casada, 2);
+      $('casadaArroba').value = formatNumber(result.casadaArroba, 2);
+      $('liquida').value = formatNumber(result.liquida, 2);
+      $('liquidaArroba').value = formatNumber(result.liquidaArroba, 2);
+
+      $('pillRend').textContent =
+        `Rendimentos: DT ${formatPercent(result.rend.dt, 1)} • TR ${formatPercent(result.rend.tr, 1)} • PA ${formatPercent(result.rend.pa, 1)}`;
+
+      updateMarginField('margemReais', 'margemReaisWrap', 'margemReaisIcon', result.margemReaisKg, 2);
+      updateMarginField('margemPerc', 'margemPercWrap', 'margemPercIcon', result.margemPerc, 2, true);
+    }
+
     function update() {
-      try {
+      try{
         const state = readState();
         const result = calcular(state);
         render(result);
-      } catch(e) {
+      }catch(e){
         console.error('Erro no simulador:', e);
       }
     }
 
-    // ========== EVENTOS ==========
-    const INPUT_IDS = ['tipo', 'precoCompraArroba', 'tr', 'dt', 'pa', 'frete', 'comissao', 'imposto'];
-    INPUT_IDS.forEach(id => {
+    // ========= EVENTOS =========
+    ['tipo','precoCompraArroba','tr','dt','pa','frete','comissao','imposto'].forEach(id => {
       const el = $(id);
+      if (!el) return;
       el.addEventListener('input', update);
       el.addEventListener('change', update);
-      // Extra para select em alguns browsers (iOS Safari)
-      if (el.tagName === 'SELECT') {
-        el.addEventListener('blur', update);
-      }
+      if (el.tagName === 'SELECT') el.addEventListener('blur', update);
     });
 
-    // Inicial
     update();
   </script>
 </body>
