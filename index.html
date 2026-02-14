@@ -271,7 +271,7 @@
           <div class="lbl">Venda Líq @</div>
           <input id="liquidaArroba" class="field result" type="text" readonly />
 
-          <div class="lbl">Margem venda sobre a compra (R$/@)</div>
+          <div class="lbl">Margem venda sobre a compra (R$/kg)</div>
           <div id="margemReaisWrap" class="marginWrap">
             <div class="marginField">
               <span class="marginValue" id="margemReais">—</span>
@@ -284,6 +284,14 @@
             <div class="marginField">
               <span class="marginValue" id="margemPerc">—</span>
               <span class="marginIcon" id="margemPercIcon"></span>
+            </div>
+          </div>
+
+          <div class="lbl">Margem (%)/15 (por kg)</div>
+          <div id="margemPercKgWrap" class="marginWrap">
+            <div class="marginField">
+              <span class="marginValue" id="margemPercKg">—</span>
+              <span class="marginIcon" id="margemPercKgIcon"></span>
             </div>
           </div>
         </div>
@@ -302,17 +310,23 @@
   </div>
 
   <script>
+    // ========== CONSTANTES ==========
     const ARROBA_KG = 15;
-
     const RENDIMENTOS = {
       vaca: { dt: 0.385, tr: 0.50, pa: 0.115 },
       boi:  { dt: 0.40,  tr: 0.49, pa: 0.11  }
     };
 
+    // ========== FORMATADORES ==========
+    const NF_2   = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const NF_0_2 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const NF_3   = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+
+    // ========== UTILITÁRIOS ==========
     const $ = (id) => document.getElementById(id);
 
     function parsePtNumber(value) {
-      const s = String(value == null ? '' : value).trim().replace(/\./g, '').replace(',', '.');
+      const s = String(value ?? '').trim().replace(/\./g, '').replace(',', '.');
       const n = parseFloat(s);
       return isFinite(n) ? n : NaN;
     }
@@ -323,47 +337,38 @@
       return (n >= 1) ? (n / 100) : n;
     }
 
-    // formatação simples, compatível com Safari antigo [web:61]
-    function formatNumber(num, decimals){
+    function formatNumber(num, decimals) {
       if (!isFinite(num)) return '';
-      const factor = Math.pow(10, decimals);
-      const n = Math.round(num * factor) / factor;
-      let s = n.toFixed(decimals);
-      // troca ponto por vírgula
-      s = s.replace('.', ',');
-      // adiciona separador de milhar (.)
-      const parts = s.split(',');
-      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-      return parts.join(',');
+      const formatter = decimals === 2 ? NF_2 : decimals === 3 ? NF_3 : NF_0_2;
+      return formatter.format(num);
     }
 
-    function formatPercent(num, decimals){
+    function formatPercent(num, decimals = 2) {
       if (!isFinite(num)) return '';
       return formatNumber(num * 100, decimals) + '%';
     }
 
+    // ========== CÁLCULOS ==========
     function calcular(state) {
       const r = RENDIMENTOS[state.tipo];
 
-      const casada =
-        (state.tr * r.tr) +
-        (state.dt * r.dt) +
-        (state.pa * r.pa);
+      // Casada por kg
+      const casada = (state.tr * r.tr) + (state.dt * r.dt) + (state.pa * r.pa);
 
+      // Deduções
       const comissaoValor = casada * state.comissaoPerc;
       const impostoValor  = casada * state.impostoPerc;
-
       const liquida = casada - (state.frete + comissaoValor + impostoValor);
 
+      // Em arroba
       const casadaArroba = casada * ARROBA_KG;
       const liquidaArroba = liquida * ARROBA_KG;
 
-      // margem sobre compra
-      const precoCompraArroba = state.precoCompraArroba;
-      const margemReais = isFinite(precoCompraArroba) ? (liquidaArroba - precoCompraArroba) : NaN;
-      const margemPerc = isFinite(precoCompraArroba) && precoCompraArroba !== 0
-        ? (margemReais / precoCompraArroba)
-        : NaN;
+      // Margens em kg (nova medida)
+      const precoCompraKg = isFinite(state.precoCompraArroba) ? (state.precoCompraArroba / ARROBA_KG) : NaN;
+      const margemReaisKg = isFinite(precoCompraKg) ? (liquida - precoCompraKg) : NaN;
+      const margemPerc = isFinite(precoCompraKg) && precoCompraKg !== 0 ? (margemReaisKg / precoCompraKg) : NaN;
+      const margemPercKg = isFinite(margemPerc) ? (margemPerc / ARROBA_KG) : NaN;
 
       return {
         casada,
@@ -371,11 +376,13 @@
         liquida,
         liquidaArroba,
         rend: r,
-        margemReais,
-        margemPerc
+        margemReaisKg,
+        margemPerc,
+        margemPercKg
       };
     }
 
+    // ========== ESTADO ==========
     function readState() {
       return {
         tipo: $('tipo').value,
@@ -389,73 +396,74 @@
       };
     }
 
+    // ========== RENDER ==========
     function render(result) {
+      // Campos principais (2 casas decimais)
       $('casada').value = formatNumber(result.casada, 2);
       $('casadaArroba').value = formatNumber(result.casadaArroba, 2);
-      $('liquida').value = formatNumber(result.liquida, 4);
-      $('liquidaArroba').value = formatNumber(result.liquidaArroba, 3);
+      $('liquida').value = formatNumber(result.liquida, 2);
+      $('liquidaArroba').value = formatNumber(result.liquidaArroba, 2);
 
-      $('pillRend').textContent =
-        'Rendimentos: DT ' + formatPercent(result.rend.dt, 1) +
-        ' • TR ' + formatPercent(result.rend.tr, 1) +
-        ' • PA ' + formatPercent(result.rend.pa, 1);
+      // Pill rendimentos
+      $('pillRend').textContent = 
+        `Rendimentos: DT ${formatPercent(result.rend.dt, 1)} • TR ${formatPercent(result.rend.tr, 1)} • PA ${formatPercent(result.rend.pa, 1)}`;
 
-      // margem
-      const wrapR = $('margemReaisWrap');
-      const wrapP = $('margemPercWrap');
-      const valR  = $('margemReais');
-      const valP  = $('margemPerc');
-      const iconR = $('margemReaisIcon');
-      const iconP = $('margemPercIcon');
+      // Margem R$/kg
+      updateMarginField('margemReais', 'margemReaisWrap', 'margemReaisIcon', result.margemReaisKg, 2);
 
-      wrapR.className = 'marginWrap';
-      wrapP.className = 'marginWrap';
-      iconR.textContent = '';
-      iconP.textContent = '';
+      // Margem %
+      updateMarginField('margemPerc', 'margemPercWrap', 'margemPercIcon', result.margemPerc, 2, true);
 
-      if (isFinite(result.margemReais)) {
-        valR.textContent = formatNumber(result.margemReais, 2);
-        if (result.margemReais > 0) {
-          wrapR.classList.add('pos');
-          iconR.textContent = '↑';
-        } else if (result.margemReais < 0) {
-          wrapR.classList.add('neg');
-          iconR.textContent = '↓';
+      // Margem %/kg (nova)
+      updateMarginField('margemPercKg', 'margemPercKgWrap', 'margemPercKgIcon', result.margemPercKg, 3, true);
+    }
+
+    function updateMarginField(valueId, wrapId, iconId, value, decimals, isPercent = false) {
+      const wrap = $(wrapId);
+      const val  = $(valueId);
+      const icon = $(iconId);
+
+      wrap.className = 'marginWrap';
+      icon.textContent = '';
+
+      if (isFinite(value)) {
+        val.textContent = isPercent ? formatPercent(value, decimals) : formatNumber(value, decimals);
+        if (value > 0) {
+          wrap.classList.add('pos');
+          icon.textContent = '↑';
+        } else if (value < 0) {
+          wrap.classList.add('neg');
+          icon.textContent = '↓';
         }
       } else {
-        valR.textContent = '—';
-      }
-
-      if (isFinite(result.margemPerc)) {
-        valP.textContent = formatPercent(result.margemPerc, 2);
-        if (result.margemPerc > 0) {
-          wrapP.classList.add('pos');
-          iconP.textContent = '↑';
-        } else if (result.margemPerc < 0) {
-          wrapP.classList.add('neg');
-          iconP.textContent = '↓';
-        }
-      } else {
-        valP.textContent = '—';
+        val.textContent = '—';
       }
     }
 
+    // ========== UPDATE ==========
     function update() {
-      try{
+      try {
         const state = readState();
         const result = calcular(state);
         render(result);
-      }catch(e){
-        // em iOS, se der erro silencioso, pelo menos não quebra tudo
-        console.error(e);
+      } catch(e) {
+        console.error('Erro no simulador:', e);
       }
     }
 
-    ['tipo','precoCompraArroba','tr','dt','pa','frete','comissao','imposto'].forEach(id => {
-      $(id).addEventListener('input', update);
-      $(id).addEventListener('change', update);
+    // ========== EVENTOS ==========
+    const INPUT_IDS = ['tipo', 'precoCompraArroba', 'tr', 'dt', 'pa', 'frete', 'comissao', 'imposto'];
+    INPUT_IDS.forEach(id => {
+      const el = $(id);
+      el.addEventListener('input', update);
+      el.addEventListener('change', update);
+      // Extra para select em alguns browsers (iOS Safari)
+      if (el.tagName === 'SELECT') {
+        el.addEventListener('blur', update);
+      }
     });
 
+    // Inicial
     update();
   </script>
 </body>
