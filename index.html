@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ideal Alimentos • Simulador de Venda</title>
+
+  <style>
+    :root{
+      --bg: #f5f7fb;
+      --card: rgba(255,255,255,.78);
+      --cardSolid: #ffffff;
+      --ink: #0b1b2b;
+      --muted: #5e7288;
+      --line: rgba(12, 35, 58, .10);
+
+      --blue: #1f5ea8;
+      --red:  #d9383a;
+      --green:#0f9150;
+
+      --field: #f2f5fa;
+      --fieldBorder: rgba(12, 35, 58, .12);
+      --focus: rgba(31, 94, 168, .16);
+
+      --editTint: rgba(217, 56, 58, .08);
+      --resultTint: rgba(31, 94, 168, .08);
+
+      --radius: 18px;
+      --shadow: 0 18px 50px rgba(11, 27, 43, .10);
+      --shadow2: 0 10px 24px rgba(11, 27, 43, .08);
+    }
+
+    *{ box-sizing: border-box; }
+    html, body{ height: 100%; }
+
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Helvetica Neue", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1100px 680px at 12% 10%, rgba(31,94,168,.18), transparent 58%),
+        radial-gradient(900px 620px at 88% 14%, rgba(217,56,58,.14), transparent 56%),
+        linear-gradient(180deg, var(--bg), #eef3fb 55%, var(--bg));
+      padding: 20px 14px 26px;
+    }
+
+    .app{ max-width: 720px; margin: 0 auto; display: grid; gap: 14px; }
+
+    .header{
+      display:flex; align-items:center; justify-content:space-between;
+      gap: 14px; padding: 8px 4px;
+    }
+    .brand{ display:flex; align-items:center; gap: 12px; min-width:0; }
+    .logo{
+      width: 46px; height: 46px; border-radius: 14px;
+      border: 1px solid var(--line);
+      background: linear-gradient(145deg, rgba(31,94,168,.16), rgba(217,56,58,.10));
+      box-shadow: var(--shadow2);
+      display:flex; align-items:center; justify-content:center;
+      overflow:hidden; flex: 0 0 auto;
+    }
+    .logo img{
+      width:100%; height:100%; object-fit:contain; display:block;
+      padding: 6px; background: var(--cardSolid);
+    }
+    .brandText{ min-width:0; }
+    .brandText h1{ margin:0; font-size: 16px; font-weight: 780; letter-spacing: .2px; line-height: 1.15; }
+    .brandText p{ margin: 3px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.25; }
+
+    .pill{
+      display:inline-flex; align-items:center; gap: 8px;
+      padding: 9px 12px; border-radius: 999px;
+      background: rgba(255,255,255,.72);
+      border: 1px solid var(--line);
+      box-shadow: 0 10px 20px rgba(11, 27, 43, .06);
+      color: var(--muted);
+      font-size: 12.5px;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 680px){
+      .header{ flex-direction: column; align-items: stretch; }
+      .pill{ width: fit-content; }
+    }
+
+    .card{
+      background: var(--card);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .cardHead{
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,255,255,.70));
+      display:flex; align-items:center; justify-content:space-between; gap: 12px;
+    }
+    .cardHead .title{
+      margin:0; font-size: 12px; letter-spacing: .34px; text-transform: uppercase;
+      color: var(--muted); font-weight: 750;
+    }
+    .cardBody{ padding: 14px 16px 16px; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 10px 12px;
+      align-items:center;
+    }
+    @media (max-width: 520px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .lbl{ font-size: 13px; color: var(--muted); line-height: 1.15; }
+
+    .field{
+      width: 100%;
+      border-radius: 14px;
+      padding: 11px 12px;
+      border: 1px solid var(--fieldBorder);
+      background: var(--field);
+      color: var(--ink);
+      outline: none;
+      font-size: 14px;
+      line-height: 1.2;
+      transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+      font-variant-numeric: tabular-nums;
+      -webkit-text-fill-color: currentColor;
+      opacity: 1;
+    }
+
+    .field:focus{
+      border-color: rgba(31, 94, 168, .35);
+      box-shadow: 0 0 0 5px var(--focus);
+      background: var(--cardSolid);
+    }
+
+    .edit{
+      background: var(--field);
+      background-image: linear-gradient(0deg, var(--editTint), var(--editTint));
+      background-blend-mode: screen;
+    }
+
+    .result{
+      background: var(--cardSolid);
+      background-image: linear-gradient(0deg, var(--resultTint), var(--resultTint));
+      background-blend-mode: screen;
+      border-color: rgba(31, 94, 168, .18);
+    }
+    .result[readonly]{ cursor: default; }
+
+    .hint{
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.35;
+    }
+
+    .footer{
+      padding: 6px 4px 0;
+      color: var(--muted);
+      font-size: 12px;
+      display:flex;
+      justify-content:space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .footer a{ color: var(--blue); text-decoration: none; }
+    .footer a:hover{ text-decoration: underline; }
+
+    /* Margem visual (seta + cor) */
+    .marginField{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 8px;
+    }
+    .marginValue{
+      flex:1;
+      border:none;
+      background:transparent;
+      padding:0;
+      font-size:14px;
+      font-variant-numeric: tabular-nums;
+      -webkit-text-fill-color: currentColor;
+    }
+    .marginIcon{
+      width:18px;
+      text-align:right;
+      font-size:13px;
+      font-weight:700;
+    }
+    .marginWrap{
+      border-radius:14px;
+      padding:8px 10px;
+      border:1px solid transparent;
+      background:var(--cardSolid);
+    }
+    .marginWrap.pos{
+      border-color: rgba(15,145,80,.25);
+      background: rgba(15,145,80,.05);
+      color: var(--green);
+    }
+    .marginWrap.neg{
+      border-color: rgba(217,56,58,.25);
+      background: rgba(217,56,58,.05);
+      color: var(--red);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="brand">
+        <div class="logo" title="Ideal Alimentos">
+          <img src="logo.png" alt="Ideal Alimentos" onerror="this.remove();" />
+        </div>
+        <div class="brandText">
+          <h1>Simulador de Venda</h1>
+          <p>Ideal Alimentos • Edite apenas os campos em vermelho.</p>
+        </div>
+      </div>
+      <div class="pill" id="pillRend">Rendimentos: —</div>
+    </div>
+
+    <section class="card">
+      <div class="cardHead"><p class="title">Parâmetros</p></div>
+
+      <div class="cardBody">
+        <div class="grid">
+          <div class="lbl">Tipo</div>
+          <select id="tipo" class="field edit">
+            <option value="vaca">Vaca</option>
+            <option value="boi">Boi</option>
+          </select>
+
+          <div class="lbl">Preço de compra (@)</div>
+          <input id="precoCompraArroba" class="field edit" type="text" inputmode="decimal" value="300" />
+
+          <div class="lbl">TR (R$/kg)</div>
+          <input id="tr" class="field edit" type="text" inputmode="decimal" value="27,5" />
+
+          <div class="lbl">DT (R$/kg)</div>
+          <input id="dt" class="field edit" type="text" inputmode="decimal" value="18" />
+
+          <div class="lbl">PA (R$/kg)</div>
+          <input id="pa" class="field edit" type="text" inputmode="decimal" value="16" />
+
+          <div class="lbl">Frete venda (R$/kg)</div>
+          <input id="frete" class="field edit" type="text" inputmode="decimal" value="0,5" />
+
+          <div class="lbl">Comissão (%)</div>
+          <input id="comissao" class="field edit" type="text" inputmode="decimal" value="1" />
+
+          <div class="lbl">Imposto (%)</div>
+          <input id="imposto" class="field edit" type="text" inputmode="decimal" value="2" />
+
+          <div class="lbl">Vem Casada</div>
+          <input id="casada" class="field result" type="text" readonly />
+
+          <div class="lbl">Vem Casada @</div>
+          <input id="casadaArroba" class="field result" type="text" readonly />
+
+          <div class="lbl">Venda Líquida</div>
+          <input id="liquida" class="field result" type="text" readonly />
+
+          <div class="lbl">Venda Líq @</div>
+          <input id="liquidaArroba" class="field result" type="text" readonly />
+
+          <div class="lbl">Margem venda sobre a compra (R$/@)</div>
+          <div id="margemReaisWrap" class="marginWrap">
+            <div class="marginField">
+              <span class="marginValue" id="margemReais">—</span>
+              <span class="marginIcon" id="margemReaisIcon"></span>
+            </div>
+          </div>
+
+          <div class="lbl">Margem (%)</div>
+          <div id="margemPercWrap" class="marginWrap">
+            <div class="marginField">
+              <span class="marginValue" id="margemPerc">—</span>
+              <span class="marginIcon" id="margemPercIcon"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hint">
+          Comissão/Imposto: pode digitar “1” (1%) ou “0,01” (1%).<br/>
+          Arroba fixa em 15 kg. Venda Líquida = Casada − (Frete + ComissãoValor + ImpostoValor).
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">
+      <span>Ideal Alimentos • Simulador interno</span>
+      <a href="https://idealalimentos.com.br/" target="_blank" rel="noreferrer">idealalimentos.com.br</a>
+    </div>
+  </div>
+
+  <script>
+    const ARROBA_KG = 15;
+
+    const RENDIMENTOS = {
+      vaca: { dt: 0.385, tr: 0.50, pa: 0.115 },
+      boi:  { dt: 0.40,  tr: 0.49, pa: 0.11  }
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function parsePtNumber(value) {
+      const s = String(value == null ? '' : value).trim().replace(/\./g, '').replace(',', '.');
+      const n = parseFloat(s);
+      return isFinite(n) ? n : NaN;
+    }
+
+    function parsePercentSmart(value) {
+      const n = parsePtNumber(value);
+      if (!isFinite(n)) return NaN;
+      return (n >= 1) ? (n / 100) : n;
+    }
+
+    // formatação simples, compatível com Safari antigo [web:61]
+    function formatNumber(num, decimals){
+      if (!isFinite(num)) return '';
+      const factor = Math.pow(10, decimals);
+      const n = Math.round(num * factor) / factor;
+      let s = n.toFixed(decimals);
+      // troca ponto por vírgula
+      s = s.replace('.', ',');
+      // adiciona separador de milhar (.)
+      const parts = s.split(',');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return parts.join(',');
+    }
+
+    function formatPercent(num, decimals){
+      if (!isFinite(num)) return '';
+      return formatNumber(num * 100, decimals) + '%';
+    }
+
+    function calcular(state) {
+      const r = RENDIMENTOS[state.tipo];
+
+      const casada =
+        (state.tr * r.tr) +
+        (state.dt * r.dt) +
+        (state.pa * r.pa);
+
+      const comissaoValor = casada * state.comissaoPerc;
+      const impostoValor  = casada * state.impostoPerc;
+
+      const liquida = casada - (state.frete + comissaoValor + impostoValor);
+
+      const casadaArroba = casada * ARROBA_KG;
+      const liquidaArroba = liquida * ARROBA_KG;
+
+      // margem sobre compra
+      const precoCompraArroba = state.precoCompraArroba;
+      const margemReais = isFinite(precoCompraArroba) ? (liquidaArroba - precoCompraArroba) : NaN;
+      const margemPerc = isFinite(precoCompraArroba) && precoCompraArroba !== 0
+        ? (margemReais / precoCompraArroba)
+        : NaN;
+
+      return {
+        casada,
+        casadaArroba,
+        liquida,
+        liquidaArroba,
+        rend: r,
+        margemReais,
+        margemPerc
+      };
+    }
+
+    function readState() {
+      return {
+        tipo: $('tipo').value,
+        precoCompraArroba: parsePtNumber($('precoCompraArroba').value),
+        tr: parsePtNumber($('tr').value),
+        dt: parsePtNumber($('dt').value),
+        pa: parsePtNumber($('pa').value),
+        frete: parsePtNumber($('frete').value),
+        comissaoPerc: parsePercentSmart($('comissao').value),
+        impostoPerc: parsePercentSmart($('imposto').value)
+      };
+    }
+
+    function render(result) {
+      $('casada').value = formatNumber(result.casada, 2);
+      $('casadaArroba').value = formatNumber(result.casadaArroba, 2);
+      $('liquida').value = formatNumber(result.liquida, 4);
+      $('liquidaArroba').value = formatNumber(result.liquidaArroba, 3);
+
+      $('pillRend').textContent =
+        'Rendimentos: DT ' + formatPercent(result.rend.dt, 1) +
+        ' • TR ' + formatPercent(result.rend.tr, 1) +
+        ' • PA ' + formatPercent(result.rend.pa, 1);
+
+      // margem
+      const wrapR = $('margemReaisWrap');
+      const wrapP = $('margemPercWrap');
+      const valR  = $('margemReais');
+      const valP  = $('margemPerc');
+      const iconR = $('margemReaisIcon');
+      const iconP = $('margemPercIcon');
+
+      wrapR.className = 'marginWrap';
+      wrapP.className = 'marginWrap';
+      iconR.textContent = '';
+      iconP.textContent = '';
+
+      if (isFinite(result.margemReais)) {
+        valR.textContent = formatNumber(result.margemReais, 2);
+        if (result.margemReais > 0) {
+          wrapR.classList.add('pos');
+          iconR.textContent = '↑';
+        } else if (result.margemReais < 0) {
+          wrapR.classList.add('neg');
+          iconR.textContent = '↓';
+        }
+      } else {
+        valR.textContent = '—';
+      }
+
+      if (isFinite(result.margemPerc)) {
+        valP.textContent = formatPercent(result.margemPerc, 2);
+        if (result.margemPerc > 0) {
+          wrapP.classList.add('pos');
+          iconP.textContent = '↑';
+        } else if (result.margemPerc < 0) {
+          wrapP.classList.add('neg');
+          iconP.textContent = '↓';
+        }
+      } else {
+        valP.textContent = '—';
+      }
+    }
+
+    function update() {
+      try{
+        const state = readState();
+        const result = calcular(state);
+        render(result);
+      }catch(e){
+        // em iOS, se der erro silencioso, pelo menos não quebra tudo
+        console.error(e);
+      }
+    }
+
+    ['tipo','precoCompraArroba','tr','dt','pa','frete','comissao','imposto'].forEach(id => {
+      $(id).addEventListener('input', update);
+      $(id).addEventListener('change', update);
+    });
+
+    update();
+  </script>
+</body>
+</html>
